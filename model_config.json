@@ -1,0 +1,154 @@
+{
+  "models": [
+    {
+      "folder": "minimax27",
+      "full_name": "MiniMaxAI/MiniMax-M2.7-FP8",
+      "display_name": "MiniMax-M2.7",
+      "short_name": "MiniMax-M2.7",
+      "chart_label": "MiniMax-M2.7 (4\u00d7H200)",
+      "hardware": "4\u00d7 NVIDIA H200 141 GB",
+      "hardware_short": "4\u00d7H200",
+      "gpu_count": 4,
+      "params": "229B params \u00b7 10B active (MoE)",
+      "quantization": "FP8",
+      "model_type": "MoE",
+      "color": "#f97316",
+      "css_class": "minimax",
+      "notes": "Performance poor despite 4 GPUs",
+      "huggingface_url": "https://huggingface.co/MiniMaxAI/MiniMax-M2.7"
+    },
+    {
+      "folder": "qwen122b",
+      "full_name": "Qwen/Qwen3.5-122B-A10B-FP8",
+      "display_name": "Qwen3.5-122B-A10B",
+      "short_name": "Qwen-122B",
+      "chart_label": "Qwen-122B (2\u00d7H200)",
+      "hardware": "2\u00d7 NVIDIA H200 141 GB",
+      "hardware_short": "2\u00d7H200",
+      "gpu_count": 2,
+      "params": "MoE",
+      "quantization": "FP8",
+      "model_type": "MoE",
+      "color": "#8b5cf6",
+      "css_class": "qwen122b",
+      "notes": "Good quality, moderate throughput",
+      "huggingface_url": "https://huggingface.co/Qwen/Qwen3.5-122B-A10B-FP8"
+    },
+    {
+      "folder": "qwen35b",
+      "full_name": "Qwen/Qwen3.5-35B-A3B-FP8",
+      "display_name": "Qwen3.5-35B-A3B-FP8",
+      "short_name": "Qwen-35B",
+      "chart_label": "Qwen-35B (2\u00d7H200)",
+      "hardware": "2\u00d7 NVIDIA H200 141 GB",
+      "hardware_short": "2\u00d7H200",
+      "gpu_count": 2,
+      "params": "MoE",
+      "quantization": "FP8",
+      "model_type": "MoE",
+      "color": "#059669",
+      "css_class": "qwen35b",
+      "notes": "Best performer overall",
+      "huggingface_url": "https://huggingface.co/Qwen/Qwen3.5-35B-A3B-FP8"
+    },
+    {
+      "folder": "gemma4-31b",
+      "full_name": "google/Gemma-4-31B-it",
+      "display_name": "Gemma-4-31B-it",
+      "short_name": "Gemma-31B",
+      "chart_label": "Gemma-31B (2\u00d7H200)",
+      "hardware": "2\u00d7 NVIDIA H200 141 GB",
+      "hardware_short": "2\u00d7H200",
+      "gpu_count": 2,
+      "params": "BF16 \u2014 dense",
+      "quantization": "BF16",
+      "model_type": "dense",
+      "color": "#e11d48",
+      "css_class": "gemma",
+      "notes": "Weakest performer, not recommended",
+      "huggingface_url": "https://huggingface.co/google/gemma-4-31b-it"
+    },
+    {
+      "folder": "gptoss120b",
+      "full_name": "openai/gpt-oss-120b",
+      "display_name": "GPT-OSS-120B",
+      "short_name": "GPT-OSS-120B",
+      "chart_label": "GPT-OSS-120B (2\u00d7H200)",
+      "hardware": "2\u00d7 NVIDIA H200 141 GB",
+      "hardware_short": "2\u00d7H200",
+      "gpu_count": 2,
+      "params": "MXFP4",
+      "quantization": "MXFP4",
+      "model_type": "dense",
+      "color": "#2563eb",
+      "css_class": "gptoss",
+      "notes": "Saturates early, TTFT bottleneck",
+      "huggingface_url": "https://huggingface.co/openai/gpt-oss-120b"
+    }
+  ],
+  "benchmark_config": {
+    "input_tokens": 20000,
+    "output_tokens": 5000,
+    "ccu_levels": [1, 10, 25, 50, 75, 100, 125, 150],
+    "num_prompts_ccu1": 10,
+    "num_prompts_ccu_gt1": 500,
+    "sla_threshold_seconds": 100,
+    "total_input_tokens_per_run": 10000000,
+    "total_output_tokens_per_run": 2500000
+  },
+  "gpu_allocations": {
+    "h200_cluster": {
+      "name": "H200 Cluster (22x NVIDIA H200 141 GB)",
+      "nodes": [
+        {
+          "namespace": "os-vtnet-restricted",
+          "cards": [
+            { "card": "0-1", "model": "Qwen/Qwen2.5-Coder-3B", "tooltip": "NetMind CoDev - Tab Autocompletion", "rowspan": 2 },
+            { "card": "2-3", "model": "openai/gpt-oss-120b", "tooltip": "NetMind CoDev - Chat/Agent", "rowspan": 2 },
+            { "card": "4-7", "model": "MiniMaxAI/MiniMax-M2.7", "tooltip": "NetMind CoDev - Beta", "rowspan": 4 }
+          ]
+        },
+        {
+          "namespace": "vtnet2-restricted",
+          "cards": [
+            { "card": "0-1", "model": "Qwen/Qwen3.5-35B-A3B-FP8", "tooltip": "NetAgent; NetMind Chatbot; NetClaw", "rowspan": 2 },
+            { "card": "2-3", "model": "Qwen/Qwen3.5-122B-A10B-FP8", "tooltip": "NetAgent; NetMind Chatbot; NetClaw", "rowspan": 2 },
+            { "card": "4-5", "model": "Qwen/Qwen3.5-122B-A10B-FP8", "tooltip": "NetAgent; NetMind Chatbot; NetClaw", "rowspan": 2 }
+          ]
+        },
+        {
+          "namespace": "vtnet3-restricted",
+          "cards": [
+            { "card": "0-1", "model": "Qwen/Qwen3.5-35B-A3B-FP8", "tooltip": "NetAgent; NetMind Chatbot; NetClaw", "rowspan": 2 },
+            { "card": "2-3", "model": "Qwen/Qwen3.5-35B-A3B-FP8", "tooltip": "NetAgent; NetMind Chatbot; NetClaw", "rowspan": 2 }
+          ]
+        },
+        {
+          "namespace": "benchmark",
+          "cards": [
+            { "card": "0-1", "model": "openai/gpt-oss-120b", "tooltip": "NetAgent; Skill Hub; NetMind Chatbot", "rowspan": 2 },
+            { "card": "2-3", "model": "google/gemma-4-31B", "tooltip": "Experiment", "rowspan": 2 }
+          ]
+        }
+      ]
+    },
+    "dgx_a100": {
+      "name": "DGX A100 (8\u00d7A100 40GB)",
+      "cards": [
+        { "card": "0-1", "model": "Qwen/Qwen3-4B", "tooltip": "DarkNoc", "rowspan": 2 },
+        { "card": "2-3", "model": "Qwen/Qwen3-VL-8B-Instruct", "tooltip": "NetMind Masking, DocsAI", "rowspan": 2 },
+        { "card": "4", "models": ["Tongyi-MAI/Z-Image", "deepseek-ai/DeepSeek-OCR-2"] },
+        { "card": "5", "model": "UsefulSensors/moonshine", "tooltip": "Speech-to-Text" },
+        { "card": "6", "model": "amazon/chronos-2", "tooltip": "Time-series Foundation Model" },
+        { "card": "7", "model": "BAAI/bge-m3-large", "tooltip": "Embedding model" }
+      ]
+    }
+  },
+  "sla_thresholds": {
+    "MiniMax-M2.7": { "max_ccu_sla100s": 10, "note": "Crosses 100s at CCU ~10" },
+    "Qwen-122B": { "max_ccu_sla100s": 25, "note": "Crosses 100s at CCU ~25" },
+    "Qwen-35B": { "max_ccu_sla100s": 60, "note": "Meets SLA up to ~60 CCU" },
+    "Gemma-31B": { "max_ccu_sla100s": 4, "note": "Only ~4 CCU under SLA" },
+    "GPT-OSS-120B": { "max_ccu_sla100s": 18, "note": "Crosses 100s at CCU ~18" }
+  }
+}

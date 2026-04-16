@@ -1,0 +1,1715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <base href="/report/llm-bench-h200/">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Inference Benchmark Report</title>
+    <script src="js/chart.umd.min.js"></script>
+    <script src="js/chartjs-plugin-annotation.min.js"></script>
+    <script src="data.js?v=20260416"></script>
+    <style>
+        html { scroll-behavior: smooth; scroll-padding-top: 20px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #f0f2f5;
+            color: #1a1a2e;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container { max-width: 1600px; margin: 0 auto; }
+
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+            padding: 40px;
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .header h1 {
+            font-size: 2.8em;
+            background: linear-gradient(135deg, #2563eb, #0ea5e9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+        .header .subtitle { font-size: 1.2em; color: #64748b; }
+
+        .part-divider {
+            text-align: center;
+            margin: 60px 0 30px 0;
+            padding: 20px;
+            border-radius: 14px;
+            color: #fff;
+            position: relative;
+        }
+        .part-divider h2 {
+            font-size: 1.6em;
+            margin: 0;
+            letter-spacing: 1px;
+        }
+        .part-divider .part-num {
+            font-size: 0.85em;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 4px;
+        }
+        #part1 { background: linear-gradient(135deg, #1e3a8a, #2563eb); }
+        #part2 { background: linear-gradient(135deg, #065f46, #059669); }
+        #part3 { background: linear-gradient(135deg, #581c87, #9333ea); }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+        }
+        .config-item {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .config-item .label { color: #64748b; font-size: 0.9em; margin-bottom: 5px; }
+        .config-item .value { font-size: 1.3em; font-weight: bold; color: #0ea5e9; }
+
+.section {
+            background: #fff;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 40px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            border-left: 5px solid #e2e8f0;
+        }
+        .section h2 {
+            font-size: 1.8em;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
+            color: #1e293b;
+        }
+        .section h3 {
+            font-size: 1.3em;
+            color: #2563eb;
+            margin: 25px 0 12px 0;
+        }
+        .part1-section { border-left-color: #2563eb; }
+        .part2-section { border-left-color: #059669; }
+        .part3-section { border-left-color: #9333ea; }
+        .part1-section h2 { color: #1e40af; }
+        .part2-section h2 { color: #047857; }
+        .part3-section h2 { color: #7e22ce; }
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 25px;
+            margin-top: 25px;
+        }
+        .scenario-card {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 25px;
+            border-left: 4px solid;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .scenario-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 24px rgba(0,0,0,0.08);
+        }
+        .scenario-card.minimax { border-left-color: #0ea5e9; }
+        .scenario-card.other { border-left-color: #f97316; }
+        .scenario-card h3 { font-size: 1.2em; margin-bottom: 10px; color: #1e293b; }
+        .scenario-card .hardware { font-size: 0.95em; color: #2563eb; margin-bottom: 8px; font-weight: 600; }
+        .scenario-card .models { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; }
+        .model-tag {
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+        .metrics-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .metric-box {
+            background: #fff;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+        .metric-box .label { font-size: 0.8em; color: #64748b; }
+        .metric-box .value { font-size: 1.1em; font-weight: bold; color: #1e293b; }
+
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 0.85em;
+        }
+        .summary-table th, .summary-table td {
+            padding: 10px 8px;
+            text-align: center;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .summary-table th {
+            background: #f1f5f9;
+            color: #334155;
+            font-weight: 600;
+            font-size: 0.85em;
+        }
+        .summary-table td:first-child {
+            font-weight: 600;
+            text-align: left;
+            color: #1e293b;
+        }
+        .summary-table tr:hover { background: #f0f9ff; }
+        .highlight-row { background: #f0fdf4 !important; }
+        .sla-warn { color: #dc2626; font-weight: bold; }
+        .peak-val { color: #059669; font-weight: bold; }
+
+        .plot-grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+        .plot-wrapper {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+        }
+        .plot-wrapper h3 { color: #1e293b; margin-bottom: 15px; font-size: 1.1em; text-align: center; }
+        .plot-wrapper canvas { width: 100% !important; }
+
+        .model-table-section { margin-top: 30px; }
+        .model-table-section h3 {
+            color: #2563eb;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+        .model-detail-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78em;
+            margin-top: 10px;
+        }
+        .model-detail-table th, .model-detail-table td {
+            padding: 8px 6px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+        .model-detail-table th {
+            background: #f1f5f9;
+            color: #334155;
+            font-weight: 600;
+        }
+        .model-detail-table td:first-child {
+            text-align: left;
+            font-weight: bold;
+            background: #f8fafc;
+            color: #1e293b;
+            white-space: nowrap;
+        }
+        .model-detail-table tr:nth-child(even) { background: #fafbfc; }
+        .model-detail-table tr:hover { background: #f0f9ff; }
+
+        .conclusion-box {
+            background: linear-gradient(135deg, #f0fdf4, #eff6ff);
+            border: 1px solid #bbf7d0;
+            border-radius: 12px;
+            padding: 30px;
+            margin-top: 30px;
+        }
+        .conclusion-box h3 { color: #059669; margin-bottom: 15px; }
+        .conclusion-box ul { list-style: none; padding: 0; }
+        .conclusion-box li { padding: 8px 0; padding-left: 25px; position: relative; color: #1e293b; }
+        .conclusion-box li::before { content: "\2192"; position: absolute; left: 0; color: #2563eb; font-weight: bold; }
+
+        .setup-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+        .setup-table th, .setup-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .setup-table th {
+            background: #f1f5f9;
+            color: #334155;
+            font-weight: 600;
+        }
+        .setup-table td { color: #1e293b; }
+        .setup-table tr:hover { background: #f0f9ff; }
+
+        .gpu-stack-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85em;
+        }
+        .gpu-stack-table th, .gpu-stack-table td {
+            padding: 10px 8px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+        .gpu-stack-table th {
+            background: #334155;
+            color: #fff;
+            font-weight: 600;
+            font-size: 0.85em;
+        }
+        .gpu-stack-table th:first-child {
+            background: #1e293b;
+        }
+        .gpu-stack-table td {
+            color: #1e293b;
+            font-weight: 500;
+        }
+        .card-label {
+            text-align: left !important;
+            font-weight: 700 !important;
+            background: #f1f5f9 !important;
+            white-space: nowrap;
+            color: #334155 !important;
+        }
+        .ns-short { font-weight: 400; color: #94a3b8; font-size: 0.85em; }
+        .cell-idle { color: #94a3b8 !important; font-style: italic; background: #f8fafc !important; }
+
+        .model-qwen3b { background: #dbeafe; }
+        .model-qwen30a3b { background: #fef3c7; }
+        .model-qwen35b { background: #dcfce7; }
+        .model-qwen122b { background: #fef9c7; }
+        .model-gptoss-os { background: #c7d2fe; }
+        .model-gptoss { background: #fce7f3; }
+        .model-gemma { background: #e0e7ff; }
+        .model-minimax { background: #ffe4e6; }
+        .merged-cell { vertical-align: middle; font-weight: 600; }
+        .has-tooltip { position: relative; cursor: help; transition: filter 0.15s ease; }
+        .has-tooltip:hover { filter: brightness(0.82); }
+        #gpu-tooltip {
+            position: fixed;
+            background: #1e293b;
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.82em;
+            font-weight: 400;
+            white-space: nowrap;
+            z-index: 99999;
+            box-shadow: 0 4px 12px rgba(0,0,0,.18);
+            pointer-events: none;
+            display: none;
+        }
+        #gpu-tooltip::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-bottom-color: #1e293b;
+        }
+        .model-qwen3-4b { background: #cffafe; }
+        .model-qwen3vl { background: #fae8ff; }
+        .model-zimage { background: #fef08a; }
+        .model-moonshine { background: #d9f99d; }
+        .model-chronos { background: #fbcfe8; }
+        .model-bge-m3 { background: #e9d5ff; }
+
+        .zoom-controls {
+            text-align: center;
+            margin-top: 8px;
+        }
+        .zoom-hint {
+            font-size: 0.8em;
+            color: #94a3b8;
+        }
+        .zoom-reset-btn {
+            display: none;
+            margin-left: 8px;
+            padding: 4px 14px;
+            font-size: 0.8em;
+            color: #fff;
+            background: #2563eb;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            vertical-align: middle;
+        }
+        .zoom-reset-btn:hover { background: #1d4ed8; }
+        .plot-wrapper canvas { cursor: crosshair; }
+
+        .rec-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 24px;
+            margin-top: 16px;
+            border-left: 5px solid #2563eb;
+        }
+        .rec-card.warn { border-left-color: #f59e0b; }
+        .rec-card.good { border-left-color: #10b981; }
+        .rec-card h4 { color: #1e293b; margin-bottom: 8px; font-size: 1.1em; }
+        .rec-card p { color: #475569; line-height: 1.6; }
+        .rec-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .app-class-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            font-size: 0.92em;
+        }
+        .app-class-table th, .app-class-table td {
+            padding: 12px 14px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .app-class-table th {
+            background: #f1f5f9;
+            color: #334155;
+            font-weight: 600;
+        }
+        .app-class-table tr:hover { background: #f0f9ff; }
+        .badge-agent {
+            display: inline-block;
+            background: #dbeafe;
+            color: #1d4ed8;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: 0.82em;
+            font-weight: 600;
+        }
+        .badge-workflow {
+            display: inline-block;
+            background: #dcfce7;
+            color: #059669;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: 0.82em;
+            font-weight: 600;
+        }
+        .gap-bad { color: #dc2626; font-weight: 600; }
+        .gap-ok { color: #059669; font-weight: 600; }
+        .gap-warn { color: #d97706; font-weight: 600; }
+
+        .page-layout {
+            display: flex;
+            gap: 24px;
+            max-width: 1800px;
+            margin: 0 auto;
+            align-items: flex-start;
+        }
+        .outline-nav {
+            position: sticky;
+            top: 20px;
+            width: 250px;
+            min-width: 250px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 20px 16px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+            font-size: 0.82em;
+            flex-shrink: 0;
+        }
+        .outline-title {
+            font-weight: 700;
+            font-size: 1.05em;
+            color: #1e293b;
+            margin-bottom: 14px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .outline-part {
+            font-weight: 700;
+            font-size: 0.78em;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-top: 14px;
+            margin-bottom: 4px;
+            padding: 3px 0;
+        }
+        .outline-part.p1 { color: #2563eb; }
+        .outline-part.p2 { color: #059669; }
+        .outline-part.p3 { color: #9333ea; }
+        .outline-nav a {
+            display: block;
+            color: #475569;
+            text-decoration: none;
+            padding: 4px 0 4px 12px;
+            line-height: 1.5;
+            border-left: 2px solid #e2e8f0;
+            transition: all 0.15s ease;
+        }
+        .outline-nav a:hover {
+            color: #2563eb;
+            border-left-color: #2563eb;
+            background: #f0f9ff;
+        }
+        .outline-nav a.active {
+            color: #1e293b;
+            font-weight: 600;
+            border-left-color: #2563eb;
+            background: #eff6ff;
+        }
+        .main-content { flex: 1; min-width: 0; }
+
+        .aa-tabs { display: flex; gap: 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 24px; flex-wrap: wrap; }
+        .aa-tab {
+            padding: 10px 18px;
+            cursor: pointer;
+            font-size: 0.88em;
+            font-weight: 500;
+            color: #64748b;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            background: #f8fafc;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .aa-tab:hover { color: #2563eb; background: #eff6ff; }
+        .aa-tab.active {
+            color: #1e40af;
+            font-weight: 600;
+            background: #fff;
+            border-color: #e2e8f0;
+            border-bottom: 2px solid #fff;
+            margin-bottom: -2px;
+            position: relative;
+            z-index: 1;
+        }
+        .aa-tab-content { display: none; }
+        .aa-tab-content.active { display: block; }
+        .aa-img-wrapper {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+        .aa-img-wrapper img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+        .aa-ref-link {
+            display: inline-block;
+            margin-top: 16px;
+            font-size: 0.85em;
+            color: #2563eb;
+            text-decoration: none;
+        }
+        .aa-ref-link:hover { text-decoration: underline; }
+
+        @media (max-width: 900px) {
+            .page-layout { flex-direction: column; }
+            .outline-nav { width: 100%; min-width: unset; position: static; max-height: unset; margin-bottom: 20px; }
+            .plot-grid-2col { grid-template-columns: 1fr; }
+            .scenario-grid { grid-template-columns: 1fr; }
+            .metrics-row { grid-template-columns: 1fr; }
+            .rec-grid { grid-template-columns: 1fr; }
+            .aa-tabs { flex-wrap: wrap; }
+            .aa-tab { font-size: 0.78em; padding: 8px 12px; }
+        }
+    </style>
+</head>
+<body>
+<div class="page-layout">
+<nav class="outline-nav" id="outlineNav">
+    <div class="outline-title">Mục lục</div>
+    <div class="outline-part p1">Phần 1 — Trạng thái Hiện tại & Benchmark</div>
+    <a href="#sec-config">Cấu hình & Kịch bản Kiểm thử Hiệu năng</a>
+    <a href="#sec-gpu">GPU Card Allocation — Model Serving</a>
+    <a href="#sec-plots">Performance Plots</a>
+    <a href="#sec-aa-benchmark">Benchmark Reference (Artificial Analysis)</a>
+    <a href="#sec-conclusion">Ngưỡng CCU giới hạn SLA 100s</a>
+    <a href="#sec-sla">GPU Card Allocation — SLA Compliance</a>
+    <div class="outline-part p2">Phần 2 — Yêu cầu Hiệu năng Ứng dụng & Phương án Quy hoạch</div>
+    <a href="#sec-appclass">Bảng Tổng hợp Hệ thống</a>
+    <a href="#sec-32gpu">Chiến lược 46 GPU (3 Node Bổ sung)</a>
+    <div class="outline-part p3">Phần 3 — Kết quả Chi tiết</div>
+    <a href="#sec-summary">Performance Summary</a>
+    <a href="#sec-detail">Detailed Per-Model Metrics</a>
+    <a href="#sec-analysis">Detailed Model Analysis</a>
+    <a href="#sec-findings">Key Findings</a>
+</nav>
+
+<div class="main-content">
+<div class="container">
+        <h1>LLM Inference Benchmark Report</h1>
+        <p class="subtitle">Comprehensive Performance Analysis — 5 Models on NVIDIA H200 GPUs</p>
+
+    <!-- ===================== PART 1 ===================== -->
+    <div class="part-divider" id="part1">
+        <div class="part-num">Phần 1</div>
+        <h2>Trạng thái Hiện tại & Benchmark</h2>
+    </div>
+
+    <div class="section part1-section" id="sec-config">
+        <h2>Cấu hình & Kịch bản Kiểm thử Hiệu năng</h2>
+
+        <div class="config-grid" style="margin-bottom:25px;">
+            <div class="config-item"><div class="label">Total Requests / Run</div><div class="value" id="cfg-num-prompts">500</div></div>
+            <div class="config-item"><div class="label">Context Length</div><div class="value" id="cfg-input-tokens">20,000 tokens</div></div>
+            <div class="config-item"><div class="label">Completion Length</div><div class="value" id="cfg-output-tokens">5,000 tokens</div></div>
+            <div class="config-item"><div class="label">Concurrency Levels</div><div class="value" id="cfg-ccu-levels">1–150 CCU</div></div>
+            <div class="config-item"><div class="label">Total Input Tokens / Run</div><div class="value" id="cfg-total-input">10,000,000</div></div>
+            <div class="config-item"><div class="label">Total Output Tokens / Run</div><div class="value" id="cfg-total-output">2,500,000</div></div>
+        </div>
+
+        <p style="color:#475569;margin-bottom:20px;" id="cfg-description"></p>
+        <table class="setup-table">
+            <thead>
+                <tr><th>Models</th><th>Hardware</th><th>Requests / Run</th><th>Input Tokens</th><th>Output Tokens</th><th>CCU Levels</th></tr>
+            </thead>
+            <tbody id="config-tbody">
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section part1-section" id="sec-gpu">
+        <h2>GPU Card Allocation</h2>
+        <h3 style="margin-bottom:16px;">H200 Cluster (22x NVIDIA H200 141 GB)</h3>
+        <p style="color:#475569;margin-bottom:20px;">Each of the 8 NVIDIA H200 GPU cards (0–7) is shared across namespaces. Rows = GPU cards, Columns = namespaces. Cells show which model is loaded.</p>
+        <div style="overflow-x:auto;">
+        <table class="gpu-stack-table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>os-vtnet-restricted</th>
+                    <th>vtnet2-restricted</th>
+                    <th>vtnet3-restricted</th>
+                    <th>benchmark</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="card-label">Card 0</td>
+                    <td class="model-qwen3b merged-cell has-tooltip" rowspan="2" data-tooltip="NetMind CoDev - Tab Autocompletion">Qwen/Qwen2.5-Coder-3B</td>
+                    <td class="model-qwen35b merged-cell has-tooltip" rowspan="2" data-tooltip="NetAgent; NetMind Chatbot; NetClaw">Qwen/Qwen3.5-35B-A3B-FP8</td>
+                    <td class="model-qwen35b has-tooltip" rowspan="2" data-tooltip="NetAgent; NetMind Chatbot; NetClaw">Qwen/Qwen3.5-35B-A3B-FP8</td>
+                    <td class="model-gptoss has-tooltip" rowspan="2" data-tooltip="NetAgent; Skill Hub; NetMind Chatbot">openai/gpt-oss-120b</td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 1</td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 2</td>
+                    <td class="model-gptoss-os merged-cell has-tooltip" rowspan="2" data-tooltip="NetMind CoDev - Chat/Agent">openai/gpt-oss-120b</td>
+                    <td class="model-qwen122b has-tooltip" rowspan="2" data-tooltip="NetAgent; NetMind Chatbot; NetClaw">Qwen/Qwen3.5-122B-A10B-FP8</td>
+                    <td class="model-qwen35b has-tooltip" rowspan="2" data-tooltip="NetAgent; NetMind Chatbot; NetClaw">Qwen/Qwen3.5-35B-A3B-FP8</td>
+                    <td class="model-gemma has-tooltip" rowspan="2" data-tooltip="Experiment">google/gemma-4-31B</td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 3</td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 4</td>
+                    <td class="model-gemma merged-cell has-tooltip" rowspan="4" data-tooltip="NetMind CoDev - Beta">MiniMaxAI/MiniMax-M2.7</td>
+                    <td class="model-qwen122b has-tooltip" rowspan="2" data-tooltip="NetAgent; NetMind Chatbot; NetClaw">Qwen/Qwen3.5-122B-A10B-FP8</td>
+                    <td class="cell-idle" rowspan="4">—</td>
+                    <td class="cell-idle" rowspan="4">—</td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 5</td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 6</td>
+                    <td class="cell-idle" rowspan="2">—</td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 7</td>
+                </tr>
+            </tbody>
+        </table>
+        </div>
+        <p style="margin-top:12px;color:#64748b;font-size:0.85em;">
+            Same-colored cells = same model instance (sharing a GPU card pair).  
+            <span style="display:inline-block;width:14px;height:14px;background:#dbeafe;border:1px solid #93c5fd;border-radius:3px;vertical-align:middle;margin-right:4px;"></span> Qwen/Qwen2.5-Coder-3B  
+            <span style="display:inline-block;width:14px;height:14px;background:#dcfce7;border:1px solid #86efac;border-radius:3px;vertical-align:middle;margin-right:4px;"></span> Qwen/Qwen3.5-35B-A3B-FP8  
+            <span style="display:inline-block;width:14px;height:14px;background:#c7d2fe;border:1px solid #a5b4fc;border-radius:3px;vertical-align:middle;margin-right:4px;"></span> openai/gpt-oss-120b (os)  
+            <span style="display:inline-block;width:14px;height:14px;background:#fef9c3;border:1px solid #fcd34d;border-radius:3px;vertical-align:middle;margin-right:4px;"></span> Qwen/Qwen3.5-122B-A10B-FP8  
+            <span style="display:inline-block;width:14px;height:14px;background:#e0e7ff;border:1px solid #a5b4fc;border-radius:3px;vertical-align:middle;margin-right:4px;"></span> gpt-oss-120b (bm)  
+            <span style="display:inline-block;width:14px;height:14px;background:#ffe4e6;border:1px solid #fda4af;border-radius:3px;vertical-align:middle;margin-right:4px;"></span> google/gemma-4-31B  
+            <span style="display:inline-block;width:14px;height:14px;background:#fce7f3;border:1px solid #f9a8d4;border-radius:3px;vertical-align:middle;margin-right:4px;"></span> minimax-2.5-230B  
+            <span style="color:#94a3b8;">— Idle</span>
+        </p>
+
+        <h3 style="margin-top:32px;">DGX A100 (8×A100 40GB)</h3>
+        <p style="color:#475569;margin-bottom:12px;">DGX A100 phục vụ các model SLM, VLM, OCR, Audio và Time-Series cho workload Workflow. Các model nhỏ chạy trên 1 card, model lớn hơn dùng 2 card. Card 4 chia đôi giữa Z-Image và DeepSeek-OCR-2.</p>
+        <div style="overflow-x:auto;">
+        <table class="gpu-stack-table" style="width:50%;">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>DGX A100</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="card-label">Card 0</td>
+                    <td class="model-qwen3-4b merged-cell has-tooltip" rowspan="2" data-tooltip="DarkNoc">Qwen/Qwen3-4B</td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 1</td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 2</td>
+                    <td class="model-qwen3vl merged-cell has-tooltip" rowspan="2" data-tooltip="NetMind Masking, DocsAI">Qwen/Qwen3-VL-8B-Instruct</td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 3</td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 4</td>
+                    <td style="padding:0;">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
+                            <div class="model-zimage has-tooltip" style="padding:10px 8px;border-right:1px solid #e2e8f0;" data-tooltip="NetMind Chatbot">Tongyi-MAI/Z-Image</div>
+                            <div class="model-zimage has-tooltip" style="padding:10px 8px;" data-tooltip="NetAgent, DocsAI">deepseek-ai/DeepSeek-OCR-2</div>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 5</td>
+                    <td class="model-moonshine has-tooltip" data-tooltip="Speech-to-Text">UsefulSensors/moonshine</td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 6</td>
+                    <td class="model-chronos has-tooltip" data-tooltip="Time-series Foundation Model">amazon/chronos-2</td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 7</td>
+                    <td class="model-bge-m3 has-tooltip" data-tooltip="Embedding model">BAAI/bge-m3-large</td>
+                </tr>
+            </tbody>
+        </table>
+        </div>
+        <p style="margin-top:12px;color:#64748b;font-size:0.85em;">
+             
+            <span style="display:inline-block;width:14px;height:14px;background:#cffafe;border:1px solid #67e8f9;border-radius:3px;vertical-align:middle;margin-right:4px;"></span> Qwen/Qwen3-4B  
+            <span style="display:inline-block;width:14px;height:14px;background:#fae8ff;border:1px solid #d946ef;border-radius:3px;vertical-align:middle;margin-right:4px;"></span> Qwen/Qwen3-VL-8B-Instruct  
+            <span style="display:inline-block;width:14px;height:14px;background:#fef08a;border:1px solid #facc15;border-radius:3px;vertical-align:middle;margin-right:4px;"></span> Z-Image + DeepSeek-OCR-2  
+            <span style="display:inline-block;width:14px;height:14px;background:#d9f99d;border:1px solid #84cc16;border-radius:3px;vertical-align:middle;margin-right:4px;"></span> UsefulSensors/moonshine  
+            <span style="display:inline-block;width:14px;height:14px;background:#fbcfe8;border:1px solid #ec4899;border-radius:3px;vertical-align:middle;margin-right:4px;"></span> amazon/chronos-2  
+            <span style="display:inline-block;width:14px;height:14px;background:#e9d5ff;border:1px solid #a855f7;border-radius:3px;vertical-align:middle;margin-right:4px;"></span> BAAI/bge-m3-large
+        </p>
+    </div>
+
+    <div class="section part1-section" id="sec-plots">
+        <h2>Performance Plots - <a style="color:#2563eb;text-decoration:none;">Kết quả benchmark trên H200</a></h2>
+        <div class="plot-grid-2col">
+            <div class="plot-wrapper">
+                <h3>Plot 1 — Request Throughput vs Concurrency</h3>
+                <canvas id="plot1"></canvas>
+                <div class="zoom-controls">
+                    <span class="zoom-hint">Click & drag to zoom X-axis</span>
+                    <button class="zoom-reset-btn" id="reset-plot1" onclick="resetZoom('plot1')">Reset Zoom</button>
+                </div>
+            </div>
+            <div class="plot-wrapper">
+                <h3>Plot 2 — Total Token Throughput vs Concurrency</h3>
+                <canvas id="plot5"></canvas>
+                <div class="zoom-controls">
+                    <span class="zoom-hint">Click & drag to zoom X-axis</span>
+                    <button class="zoom-reset-btn" id="reset-plot5" onclick="resetZoom('plot5')">Reset Zoom</button>
+                </div>
+            </div>
+        </div>
+        <div class="plot-grid-2col" style="margin-top:30px;">
+            <div class="plot-wrapper">
+                <h3>Plot 3 — Avg E2E Latency vs Concurrency</h3>
+                <canvas id="plot2"></canvas>
+                <div class="zoom-controls">
+                    <span class="zoom-hint">Click & drag to zoom X-axis</span>
+                    <button class="zoom-reset-btn" id="reset-plot2" onclick="resetZoom('plot2')">Reset Zoom</button>
+                </div>
+            </div>
+            <div class="plot-wrapper">
+                <h3>Plot 4 — Avg E2E Latency vs Request Throughput</h3>
+                <canvas id="plot3"></canvas>
+                <div class="zoom-controls">
+                    <span class="zoom-hint">Click & drag to zoom X-axis</span>
+                    <button class="zoom-reset-btn" id="reset-plot3" onclick="resetZoom('plot3')">Reset Zoom</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section part1-section" id="sec-aa-benchmark">
+        <h2>Benchmark Reference - <a href="https://artificialanalysis.ai/models/comparisons/gemma-4-31b-vs-qwen3-5-122b-a10b-non-reasoning?speed=output-speed-variance&endpoints=togetherai_gpt-oss-120b%2Calibaba-cloud_qwen3-5-35b-a3b%2Cnovita_minimax-m2-7_fp8&speed-comparison=latency-vs-output-speed&latency=time-to-first-answer-token&end-to-end=end-to-end-response-time-by-input-token-count" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:none;">https://artificialanalysis.ai/</a></h2>
+        <div class="aa-tabs" id="aaTabs">
+            <div class="aa-tab active" data-tab="aa-output-speed">Output Speed</div>
+            <div class="aa-tab" data-tab="aa-output-speed-by-tokens">Output Speed by Input Token Count</div>
+            <div class="aa-tab" data-tab="aa-output-speed-variance">Output Speed Variance</div>
+            <div class="aa-tab" data-tab="aa-e2e-response-time">End-to-End Response Time by Input Token Count</div>
+        </div>
+        <div class="aa-tab-content active" id="aa-output-speed">
+            <div class="aa-img-wrapper">
+                <img src="benchmark_from_aa/output_speed.png" alt="Output Speed">
+            </div>
+        </div>
+        <div class="aa-tab-content" id="aa-output-speed-by-tokens">
+            <div class="aa-img-wrapper">
+                <img src="benchmark_from_aa/output_speed_by_input_token_count.png" alt="Output Speed by Input Token Count">
+            </div>
+        </div>
+        <div class="aa-tab-content" id="aa-output-speed-variance">
+            <div class="aa-img-wrapper">
+                <img src="benchmark_from_aa/output_speed_variance.png" alt="Output Speed Variance">
+            </div>
+        </div>
+        <div class="aa-tab-content" id="aa-e2e-response-time">
+            <div class="aa-img-wrapper">
+                <img src="benchmark_from_aa/end-to-0end_response_time_by_inpot_token_count.png" alt="End-to-End Response Time by Input Token Count">
+            </div>
+        </div>
+        <a class="aa-ref-link" href="https://artificialanalysis.ai/models/comparisons/gemma-4-31b-vs-qwen3-5-122b-a10b-non-reasoning?speed=output-speed-variance&endpoints=togetherai_gpt-oss-120b%2Calibaba-cloud_qwen3-5-35b-a3b%2Cnovita_minimax-m2-7_fp8&speed-comparison=latency-vs-output-speed&latency=time-to-first-answer-token&end-to-end=end-to-end-response-time-by-input-token-count" target="_blank" rel="noopener">View full comparison on Artificial Analysis →</a>
+    </div>
+
+<div class="section part1-section" id="sec-conclusion">
+        <h2>Ngưỡng CCU tối đa để đảm bảo cam kết SLA trong mức 100s</h2>
+        <p>Đối với kịch bản kiểm thử 20.000 token input / 5.000 token output, nhằm đảm bảo trải nghiệm người dùng tối ưu trong phạm vi SLA 100s. Quan sát giao điểm với đường giới hạn SLA màu đỏ trên biểu đồ, mức CCU tới hạn được ghi nhận là. <strong>Plot 3</strong>, ta xác định được ngưỡng CCU tới hạn (Critical CCU) cho từng mô hình cụ thể như sau:</p>
+
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th>Mô hình</th>
+                    <th>CCU giới hạn (SLA 100s)</th>
+                    <th>Nhận xét</th>
+                </tr>
+            </thead>
+<tbody id="sla-tbody">
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section part1-section" id="sec-sla">
+        <h2>GPU Card Allocation — SLA Compliance per Model</h2>
+        <p style="color:#475569;margin-bottom:20px;">Same GPU layout as above, with SLA compliance info. <strong>Max CCU < 100s</strong> shows the highest concurrency level at which the model meets the 100 s E2E latency SLA. <span class="sla-warn" style="font-weight:600;">Red = borderline SLA.</span> <span style="color:#d97706;font-weight:600;">Orange = limited CCU headroom.</span></p>
+        <div style="overflow-x:auto;">
+        <table class="gpu-stack-table" style="font-size:0.92em;">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>os-vtnet-restricted</th>
+                    <th>vtnet2-restricted</th>
+                    <th>vtnet3-restricted</th>
+                    <th>benchmark</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="card-label">Card 0</td>
+                    <td class="model-qwen3b merged-cell has-tooltip" rowspan="2" data-tooltip="NetMind CoDev - Tab Autocompletion">Qwen/Qwen2.5-Coder-3B</td>
+                    <td class="model-qwen35b merged-cell has-tooltip" rowspan="2" data-tooltip="NetAgent; NetMind Chatbot; NetClaw">Qwen/Qwen3.5-35B-A3B-FP8<br><span style="font-size:0.8em;color:#059669;">Max CCU < 100s: <strong>~60</strong></span></td>
+                    <td class="model-qwen35b has-tooltip" rowspan="2" data-tooltip="NetAgent; NetMind Chatbot; NetClaw">Qwen/Qwen3.5-35B-A3B-FP8<br><span style="font-size:0.8em;color:#059669;">Max CCU < 100s: <strong>~60</strong></span></td>
+                    <td class="model-gptoss has-tooltip" rowspan="2" data-tooltip="NetAgent; Skill Hub; NetMind Chatbot">openai/gpt-oss-120b<br><span style="font-size:0.8em;color:#d97706;">Max CCU < 100s: <strong>~18</strong></span></td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 1</td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 2</td>
+                    <td class="model-gptoss-os merged-cell has-tooltip" rowspan="2" data-tooltip="NetMind CoDev - Chat/Agent">openai/gpt-oss-120b<br><span style="font-size:0.8em;color:#d97706;">Max CCU < 100s: <strong>~18</strong></span></td>
+                    <td class="model-qwen122b has-tooltip" rowspan="2" data-tooltip="NetAgent; NetMind Chatbot; NetClaw">Qwen/Qwen3.5-122B-A10B-FP8<br><span style="font-size:0.8em;color:#d97706;">Max CCU < 100s: <strong>~25</strong></span></td>
+                    <td class="model-qwen35b has-tooltip" rowspan="2" data-tooltip="NetAgent; NetMind Chatbot; NetClaw">Qwen/Qwen3.5-35B-A3B-FP8<br><span style="font-size:0.8em;color:#059669;">Max CCU < 100s: <strong>~60</strong></span></td>
+                    <td class="model-gemma has-tooltip" rowspan="2" data-tooltip="Experiment">google/gemma-4-31B<br><span style="font-size:0.8em;" class="sla-warn">Max CCU < 100s: <strong>~4</strong></span></td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 3</td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 4</td>
+                    <td class="model-gemma merged-cell has-tooltip" rowspan="4" data-tooltip="NetMind CoDev - Beta">MiniMaxAI/MiniMax-M2.7<br><span style="font-size:0.8em;" class="sla-warn">Max CCU < 100s: <strong>~10</strong></span></td>
+                    <td class="model-qwen122b has-tooltip" rowspan="2" data-tooltip="NetAgent; NetMind Chatbot; NetClaw">Qwen/Qwen3.5-122B-A10B-FP8<br><span style="font-size:0.8em;color:#d97706;">Max CCU < 100s: <strong>~25</strong></span></td>
+                    <td class="cell-idle" rowspan="4">—</td>
+                    <td class="cell-idle" rowspan="4">—</td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 5</td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 6</td>
+                    <td class="cell-idle" rowspan="2">—</td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 7</td>
+                </tr>
+            </tbody>
+        </table>
+        </div>
+        <p style="margin-top:12px;color:#64748b;font-size:0.85em;">
+            Benchmark-tested SLA thresholds (E2E Latency < 100s at 20k input / 5k output tokens):<br>
+            <span style="color:#059669;font-weight:600;">✓ Meets SLA</span> —
+            Qwen/Qwen3.5-35B-A3B-FP8: CCU ~60  | 
+            Qwen/Qwen3.5-122B-A10B-FP8: CCU ~25  | 
+            openai/gpt-oss-120b: CCU ~18  | 
+            MiniMax-M2.7: CCU ~10
+            <br>
+            <span class="sla-warn" style="font-weight:600;">✗ Near or above SLA</span> —
+            MiniMax-M2.7: 101.5s at CCU 10 (borderline)  | 
+            Gemma-4-31B: ~4 CCU only
+        </p>
+    </div>
+
+    <!-- ===================== PART 2 ===================== -->
+    <div class="part-divider" id="part2">
+        <div class="part-num">Phần 2</div>
+        <h2>Yêu cầu Hiệu năng Ứng dụng & Phương án Quy hoạch</h2>
+    </div>
+
+    <div class="section part2-section" id="sec-appclass">
+        <h2>Bảng Tổng hợp Hệ thống</h2>
+        <p style="color:#475569;margin-bottom:16px;">Bảng dưới liệt kê các hệ thống sản phẩm, loại hình workload (<strong>WF</strong> = Workflow — ngắn gọn, tự động; <strong>Agent</strong> = suy luận sâu, output dài), loại mô hình cần thiết và mô hình được khuyến nghị dựa trên kết quả benchmark.</p>
+
+        <table class="app-class-table">
+            <thead>
+                <tr>
+                    <th>Hệ thống</th>
+                    <th>Loại hình</th>
+                    <th>Loại mô hình</th>
+                    <th>Mô hình khuyến nghị</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>DarkNoc</strong></td>
+                    <td><span class="badge-workflow">WF</span></td>
+                    <td>SLM, Embedding, VLM</td>
+                    <td>Qwen3-4B, BGE-M3-Large</td>
+                </tr>
+                <tr>
+                    <td><strong>NetMind Chatbot</strong></td>
+                    <td><span class="badge-workflow">WF</span> <span class="badge-agent">Agent</span></td>
+                    <td>SLM, LLM, Embedding, Text-to-Image</td>
+                    <td>Qwen-3.5-35B, Qwen/Qwen3.5-122B-A10B-FP8, BGE-M3-Large, Z-Image</td>
+                </tr>
+                <tr class="highlight-row">
+                    <td><strong>NetFlow</strong></td>
+                    <td><span class="badge-workflow">WF</span> <span class="badge-agent">Agent</span></td>
+                    <td>SLM, LLM, Embedding, VLM, OCR</td>
+                    <td>Qwen-3.5-35B, Qwen/Qwen3.5-122B-A10B-FP8, BGE-M3-Large, DeepSeek-OCR</td>
+                </tr>
+                <tr>
+                    <td><strong>NetMind Claw</strong></td>
+                    <td><span class="badge-workflow">WF</span> <span class="badge-agent">Agent</span></td>
+                    <td>SLM, LLM, Embedding, VLM</td>
+                    <td>Qwen-3.5-35B, Qwen/Qwen3.5-122B-A10B-FP8, BGE-M3-Large</td>
+                </tr>
+                <tr>
+                    <td><strong>CoDev</strong></td>
+                    <td><span class="badge-agent">Coding Agent</span> <span class="badge-workflow">Tab</span></td>
+                    <td>SLM, LLM</td>
+                    <td>GPT-OSS-120B, Qwen2.5-3B-Coder, MiniMax-M2.7</td>
+                </tr>
+                <tr>
+                    <td><strong>Other Usecase</strong></td>
+                    <td><span class="badge-workflow">WF</span></td>
+                    <td>SLM, VLM, OCR, Audio, Time-Series</td>
+                    <td>Qwen-2-8B-VL, DeepSeek-OCR, Speech-to-Text, Time-Series Models</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="rec-grid" style="margin-top:24px;">
+            <div class="rec-card good">
+                <h4>Agent (20k input / 5k output)</h4>
+                <p>Ứng dụng Agent (NetMind Claw, NetFlow Agent) cần mô hình hiệu suất cao, đảm bảo E2E Latency < 100s. Đây chính là kịch bản benchmark hiện tại. Với output dài 5,000 tokens, TTFT là thành phần chiếm ưu thế, và chỉ <strong>Qwen-35B</strong> đáp ứng SLA ở CCU lớn (~60).</p>
+            </div>
+            <div class="rec-card">
+                <h4>Workflow (5k input / 500 output)</h4>
+                <p>Ứng dụng Workflow (DarkNoc, NetFlow WF, NetMind Chatbot WF) có output ngắn hơn 10× và input ngắn hơn 4×. E2E ước tính chỉ khoảng <strong>5–15 giây</strong> thay vì 40–100+ giây như Agent. Các mô hình nhỏ (Qwen3-4B, Qwen2.5-3B-Coder) đã đủ cho workload này.</p>
+            </div>
+        </div>
+
+        </div>
+
+    <!-- <div class="section part2-section" id="sec-reorg">
+        <h2>Đề xuất Sắp xếp lại trên 8 GPU Hiện tại</h2>
+        <p style="color:#475569;margin-bottom:16px;">Dựa trên kết quả benchmark, đề xuất loại bỏ các mô hình không đáp ứng SLA (MiniMax-M2.7, Gemma-4-31B) và phân bổ lại GPU cho các mô hình hiệu suất cao hơn.</p>
+
+        <div style="overflow-x:auto;">
+        <table class="gpu-stack-table" style="font-size:0.9em;">
+            <thead>
+                <tr>
+                    <th>GPU Cards</th>
+                    <th>os-vtnet<br><span style="font-weight:400;font-size:0.8em;">(NetFlow — Workflow)</span></th>
+                    <th>vtnet2<br><span style="font-weight:400;font-size:0.8em;">(NetClaw — Agent)</span></th>
+                    <th>vtnet3<br><span style="font-weight:400;font-size:0.8em;">(NetMind — Agent)</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="card-label">Cards 0–1</td>
+                    <td class="model-qwen3b merged-cell" rowspan="1" style="vertical-align:middle;">Qwen/Qwen2.5-Coder-3B<br><span style="font-size:0.75em;color:#059669;">Workflow — đủ cho NetFlow</span></td>
+                    <td class="model-qwen35b" rowspan="2" style="vertical-align:middle;font-weight:600;">Qwen/Qwen3.5-35B-A3B-FP8<br><span style="font-size:0.75em;color:#059669;">Agent — SLA ~60 CCU</span></td>
+                    <td class="model-qwen35b" rowspan="4" style="vertical-align:middle;font-weight:600;">Qwen/Qwen3.5-35B-A3B-FP8<br><span style="font-size:0.75em;color:#059669;">Agent — SLA ~60 CCU</span></td>
+                </tr>
+                <tr>
+                    <td class="card-label">Cards 2–3</td>
+                    <td class="model-qwen35b merged-cell" rowspan="1" style="vertical-align:middle;">Qwen/Qwen3.5-35B-A3B-FP8<br><span style="font-size:0.75em;color:#059669;">Workflow + Agent overflow</span></td>
+                </tr>
+                <tr>
+                    <td class="card-label">Cards 4–5</td>
+                    <td class="cell-idle" rowspan="3" style="vertical-align:middle;font-style:italic;">— Giải phóng từ MiniMax</td>
+                    <td class="model-qwen122b merged-cell" rowspan="2" style="vertical-align:middle;">Qwen/Qwen3.5-122B-A10B-FP8<br><span style="font-size:0.75em;color:#d97706;">Agent — SLA CCU 10, chất lường cao hơn</span></td>
+                </tr>
+                <tr>
+                    <td class="card-label">Cards 6–7</td>
+                    <td class="cell-idle" rowspan="1" style="vertical-align:middle;font-style:italic;">— Sẵn sàng</td>
+                </tr>
+            </tbody>
+        </table>
+        </div>
+
+        <div class="rec-grid" style="margin-top:20px;">
+            <div class="rec-card good">
+                <h4>Thay đổi chính</h4>
+                <ul style="color:#475569;line-height:1.8;padding-left:18px;margin-top:8px;">
+                    <li><strong>Loại bỏ MiniMax-M2.7</strong> (4 GPU cards) — không đáp ứng SLA ở bất kỳ CCU nào</li>
+                    <li><strong>Loại bỏ Gemma-4-31B</strong> (2 GPU cards trên benchmark) — E2E 129s ngay ở CCU 10</li>
+                    <li><strong>Thêm Qwen-35B vào vtnet2</strong> (NetClaw) — mô hình Agent tốt nhất với SLA CCU ~60</li>
+                    <li><strong>Thêm Qwen-35B vào os-vtnet</strong> (NetFlow) — phục vụ cả Workflow lẫn Agent overflow</li>
+                    <li><strong>Giữ Qwen-122B</strong> trên vtnet2 cho workload cần chất lường cao hơn (chỉ ở CCU thấp)</li>
+                </ul>
+            </div>
+            <div class="rec-card warn">
+                <h4>Lưu ý quan trọng</h4>
+                <ul style="color:#475569;line-height:1.8;padding-left:18px;margin-top:8px;">
+                    <li>Với 2 instance Qwen-35B (vtnet2 + vtnet3), số lường CCU tổng có thể lên đến <strong>~100 CCU</strong> cho workload Agent</li>
+                    <li>Qwen-122B vẫn được giữ cho các trường hợp cần chất lường suy luận cao, nhưng chỉ ở CCU rất thấp (≤10)</li>
+                    <li>Cards 4–5 trên os-vtnet và Cards 6–7 trên toàn bệ được giải phóng, sẵn sàng cho mụ cích khác</li>
+                    <li>Benchmark namespace có thể được tái sử dụng cho các instance production bổ sung</li>
+                </ul>
+            </div>
+        </div>
+    </div> -->
+
+    <div class="section part2-section" id="sec-32gpu">
+        <h2>Chiến lược Triển khai với 3 Node H200 Bổ sung (Tổng 46 GPU)</h2>
+        <p style="color:#475569;margin-bottom:16px;">Khi bổ sung 3 node H200 (mỗi node 8 GPU = 24 GPU thêm), tổng cùng <strong>46 GPU H200</strong>. Việc này cho phép triển khai nhiều instance hơn của Qwen-35B và phân bổ tải theo từng ứng dụng.</p>
+
+        <h3>H200 Cluster (46xH200)</h3>
+        <div style="overflow-x:auto;">
+        <table class="gpu-stack-table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>os-vtnet-restricted</th>
+                    <th>vtnet2-restricted</th>
+                    <th>vtnet3-restricted</th>
+                    <th>benchmark</th>
+                    <th>new-node-1</th>
+                    <th>new-node-2</th>
+                    <th>new-node-3</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="card-label">Card 0</td>
+                    <td class="model-qwen3b merged-cell" rowspan="2">Qwen/Qwen2.5-Coder-3B</td>
+                    <td class="model-gptoss merged-cell" rowspan="2">openai/gpt-oss-120b<br><span style="font-size:0.7em;color:#d97706;">Max CCU < 100s: <strong>~18</strong></span></td>
+                    <td class="model-qwen35b merged-cell" rowspan="2">Qwen/Qwen3.5-35B-A3B-FP8<br><span style="font-size:0.7em;color:#059669;">Max CCU < 100s: <strong>~60</strong></span></td>
+                    <td class="model-qwen122b merged-cell" rowspan="2">Qwen/Qwen3.5-122B-A10B-FP8<br><span style="font-size:0.7em;color:#d97706;">Max CCU < 100s: <strong>~25</strong></span></td>
+                    <td class="model-qwen122b merged-cell" rowspan="2">Qwen/Qwen3.5-122B-A10B-FP8<br><span style="font-size:0.7em;color:#d97706;">Max CCU < 100s: <strong>~25</strong></span></td>
+                    <td class="model-qwen35b merged-cell" rowspan="2">Qwen/Qwen3.5-35B-A3B-FP8<br><span style="font-size:0.7em;color:#059669;">Max CCU < 100s: <strong>~60</strong></span></td>
+                    <td class="model-qwen35b merged-cell" rowspan="2">Qwen/Qwen3.5-35B-A3B-FP8<br><span style="font-size:0.7em;color:#059669;">Max CCU < 100s: <strong>~60</strong></span></td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 1</td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 2</td>
+                    <td class="model-gptoss-os merged-cell" rowspan="2">openai/gpt-oss-120b<br><span style="font-size:0.7em;color:#d97706;">Max CCU < 100s: <strong>~18</strong></span></td>
+                    <td class="model-gptoss merged-cell" rowspan="2">openai/gpt-oss-120b<br><span style="font-size:0.7em;color:#d97706;">Max CCU < 100s: <strong>~18</strong></span></td>
+                    <td class="model-qwen35b merged-cell" rowspan="2">Qwen/Qwen3.5-35B-A3B-FP8<br><span style="font-size:0.7em;color:#059669;">Max CCU < 100s: <strong>~60</strong></span></td>
+                    <td class="model-qwen122b" rowspan="2">Qwen/Qwen3.5-122B-A10B-FP8<br><span style="font-size:0.7em;color:#d97706;">Max CCU < 100s: <strong>~25</strong></span></td>
+                    <td class="model-qwen122b merged-cell" rowspan="2">Qwen/Qwen3.5-122B-A10B-FP8<br><span style="font-size:0.7em;color:#d97706;">Max CCU < 100s: <strong>~25</strong></span></td>
+                    <td class="model-qwen35b merged-cell" rowspan="2">Qwen/Qwen3.5-35B-A3B-FP8<br><span style="font-size:0.7em;color:#059669;">Max CCU < 100s: <strong>~60</strong></span></td>
+                    <td class="model-qwen35b merged-cell" rowspan="2">Qwen/Qwen3.5-35B-A3B-FP8<br><span style="font-size:0.7em;color:#059669;">Max CCU < 100s: <strong>~60</strong></span></td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 3</td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 4</td>
+                    <td class="model-gemma merged-cell" rowspan="4">MiniMaxAI/MiniMax-M2.7<br><span style="font-size:0.7em;" class="sla-warn">Max CCU < 100s: <strong>~10</strong></span></td>
+                    <td class="model-gptoss" rowspan="2">openai/gpt-oss-120b<br><span style="font-size:0.7em;color:#d97706;">Max CCU < 100s: <strong>~18</strong></span></td>
+                    <td class="cell-idle" rowspan="4">—</td>
+                    <td class="cell-idle" rowspan="4">—</td>
+                    <td class="model-qwen122b merged-cell" rowspan="2">Qwen/Qwen3.5-122B-A10B-FP8<br><span style="font-size:0.7em;color:#d97706;">Max CCU < 100s: <strong>~25</strong></span></td>
+                    <td class="model-qwen35b merged-cell" rowspan="2">Qwen/Qwen3.5-35B-A3B-FP8<br><span style="font-size:0.7em;color:#059669;">Max CCU < 100s: <strong>~60</strong></span></td>
+                    <td class="model-qwen35b merged-cell" rowspan="2">Qwen/Qwen3.5-35B-A3B-FP8<br><span style="font-size:0.7em;color:#059669;">Max CCU < 100s: <strong>~60</strong></span></td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 5</td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 6</td>
+                    <td class="cell-idle" rowspan="2">—</td>
+                    <td class="model-qwen122b merged-cell" rowspan="2">Qwen/Qwen3.5-122B-A10B-FP8<br><span style="font-size:0.7em;color:#d97706;">Max CCU < 100s: <strong>~25</strong></span></td>
+                    <td class="model-qwen35b merged-cell" rowspan="2">Qwen/Qwen3.5-35B-A3B-FP8<br><span style="font-size:0.7em;color:#059669;">Max CCU < 100s: <strong>~60</strong></span></td>
+                    <td class="model-qwen35b merged-cell" rowspan="2">Qwen/Qwen3.5-35B-A3B-FP8<br><span style="font-size:0.7em;color:#059669;">Max CCU < 100s: <strong>~60</strong></span></td>
+                </tr>
+                <tr>
+                    <td class="card-label">Card 7</td>
+                </tr>
+            </tbody>
+        </table>
+        </div>
+
+        <h3 style="margin-top:28px;">Tổng kết năng lực sử dụng (46 GPUs)</h3>
+        <table class="summary-table" style="margin-top:16px;">
+            <thead>
+                <tr>
+                    <th>Mô hình</th>
+                    <th>Instance tổng</th>
+                    <th>GPU tổng</th>
+                    <th>Phục vụ</th>
+                    <th>CCU tải tối đa (Agent)</th>
+                    <th>CCU tải tối đa (Workflow)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="highlight-row">
+                    <td><strong>Qwen/Qwen3.5-35B-A3B-FP8</strong></td>
+                    <td><strong>10 instance</strong></td>
+                    <td><strong>20 GPUs</strong></td>
+                    <td>NetMind Claw + NetMind + NetAgent + DarkNoc(Node Workflow nhanh)</td>
+                    <td class="peak-val">~600 CCU</td>
+                    <td class="peak-val">~2400+ CCU</td>
+                </tr>
+                <tr>
+                    <td><strong>Qwen/Qwen3.5-122B-A10B-FP8</strong></td>
+                    <td>6 instance</td>
+                    <td>12 GPUs</td>
+                    <td>NetMind Claw + NetMind + NetAgent (Agentic Chất lượng cao)</td>
+                    <td>~150 CCU</td>
+                    <td>~600 CCU</td>
+                </tr>
+                <tr>
+                    <td><strong>openai/gpt-oss-120b</strong></td>
+                    <td>4 instance</td>
+                    <td>8 GPUs</td>
+                    <td>NetMind Claw + NetMind + NetAgent (Khả năng viết tốt)</td>
+                    <td>~72 CCU</td>
+                    <td>~288 CCU</td>
+                </tr>
+                <tr>
+                    <td><strong>Qwen/Qwen2.5-Coder-3B</strong></td>
+                    <td>1 instance</td>
+                    <td>2 GPUs</td>
+                    <td>NetMind CoDev (Ban CNTT)</td>
+                    <td>--</td>
+                    <td>120 CCU (Tab Autocompletion)</td>
+                </tr>
+                <tr>
+                    <td><strong>MiniMaxAI/MiniMax-M2.7</strong></td>
+                    <td>1 instance</td>
+                    <td>4 GPUs</td>
+                    <td>NetMind CoDev (Ban CNTT) - Coding Agent</td>
+                    <td>~10 CCU</td>
+                    <td>~40 CCU</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- <div class="conclusion-box" style="margin-top:24px;">
+            <h3>Lợi ích chiến lược</h3>
+            <ul>
+                <li><strong>Gấp đôi năng lực Agent:</strong> Từ 1 instance Qwen-35B → 9 instance, tăng CCU Agent tối đa từ ~50 lên ~450.</li>
+                <li><strong>Dự phòng chế đổ:</strong> Nhiều instance cho phép load balancing và failover giữa các node.</li>
+                <li><strong>Tách biệt workload:</strong> Workflow (NetFlow) sử dụng mô hình nhỏ, nhượng GPU lớn cho Agent (NetClaw, NetMind).</li>
+                <li><strong>Qwen-122B vẫn có sẵn:</strong> Dùng cho các tác vụ cần chất lường suy luận cao hơn ở CCU thấp.</li>
+                <li><strong>6 GPU dự phòng:</strong> Sẵn sàng cho triển khai mô hình mới, A/B testing, hoặc mụ cích khẩn cấp.</li>
+            </ul>
+        </div> -->
+    </div>
+
+    <!-- ===================== PART 3 ===================== -->
+    <div class="part-divider" id="part3">
+        <div class="part-num">Phần 3</div>
+        <h2>Kết quả Benchmark Chi tiết</h2>
+    </div>
+
+    <div class="section part3-section" id="sec-summary">
+        <h2>Performance Summary (Peak Concurrent Capacity)</h2>
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th>Model</th><th>Hardware</th><th>Best CCU</th><th>Req Tput (req/s)</th><th>Token Tput (tok/s)</th><th>Out Token Tput (tok/s)</th><th>E2E Latency (s)</th><th>TTFT Mean (ms)</th><th>TPOT Mean (ms)</th><th>Success Rate</th>
+                </tr>
+            </thead>
+            <tbody id="summary-tbody">
+            </tbody>
+        </table>
+        <p style="margin-top:10px;color:#64748b;font-size:0.85em;">
+            <strong>Best CCU</strong> = concurrency level where the model achieves its highest total token throughput.
+              <span class="sla-warn">Red E2E</span> = exceeds 100 s SLA.
+        </p>
+    </div>
+
+    <div class="section part3-section" id="sec-detail">
+        <h2>Detailed Per-Model Metrics</h2>
+        <div id="detail-tables"></div>
+    </div>
+
+    <div class="section part3-section" id="sec-analysis">
+        <h2>Detailed Model Analysis</h2>
+        <div class="scenario-grid" id="analysis-cards">
+        </div>
+    </div>
+
+    <div class="section part3-section" id="sec-findings">
+        <div class="conclusion-box">
+            <h3>Key Findings</h3>
+            <ul>
+                <li><strong>Qwen3.5-35B-A3B</strong> is the clear overall winner on 2× H200: 19,300 tok/s peak, lowest latency, best efficiency.</li>
+                <li><strong>MiniMax-M2.7</strong> on 4× H200 shows stable TPOT (~40 ms) but TTFT degrades to 4+ minutes, capping throughput at ~7,600 tok/s.</li>
+                <li><strong>Gemma-4-31B-it</strong> has the highest latency and lowest throughput — not recommended for latency-critical serving.</li>
+                <li>Throughput plateaus at ~75–125 CCU for most models; higher concurrency adds latency without throughput gain.</li>
+                <li>TTFT (Time to First Token) is the dominant bottleneck at high concurrency across all models.</li>
+                <li>Only <strong>Qwen-35B at CCU ≤ 25</strong> and <strong>Qwen-122B at CCU 10</strong> meet the 100 s E2E latency SLA at practical load. At CCU 1, all 5 models meet SLA, but this is single-user baseline only.</li>
+</ul>
+        </div>
+    </div>
+
+</div><!-- /container -->
+</div><!-- /main-content -->
+</div><!-- /page-layout -->
+
+<script>
+let benchData = null;
+let modelConfig = null;
+let models = {};
+let modelNames = [];
+const MARKERS = ['circle','rect','triangle','rectRot','star'];
+
+function loadDataAndRender() {
+    if (typeof BENCHMARK_DATA === 'undefined' || typeof MODEL_CONFIG === 'undefined') {
+        document.getElementById('sec-detail').innerHTML += '<p style="color:red;">Error: data.js not found. Please run <code>python3 extract_benchmark.py</code> first.</p>';
+        return;
+    }
+    benchData = BENCHMARK_DATA;
+    modelConfig = MODEL_CONFIG;
+    buildModelsObject();
+    renderConfigTable();
+    renderSummaryTable();
+    renderDetailTables();
+    renderSLASection();
+    renderAnalysis();
+    renderCharts();
+}
+
+function fmt(v, decimals) {
+    if (v === null || v === undefined) return '-';
+    decimals = decimals !== undefined ? decimals : 2;
+    return typeof v === 'number' ? v.toFixed(decimals) : v;
+}
+
+function fmtInt(v) {
+    if (v === null || v === undefined) return '-';
+    return typeof v === 'number' ? v.toLocaleString() : v;
+}
+
+function slaClass(v, threshold) {
+    if (v > threshold) return ' class="sla-warn"';
+    return '';
+}
+
+function peakClass(arr, idx) {
+    const max = Math.max(...arr);
+    return arr[idx] === max ? ' class="peak-val"' : '';
+}
+
+function buildModelsObject() {
+    const cfgModels = modelConfig.models;
+    for (const mc of cfgModels) {
+        const shortName = mc.short_name;
+        const md = benchData[shortName];
+        if (!md) continue;
+        const ccuLevels = md.ccu_levels;
+        const dataMap = md.data;
+        models[mc.chart_label] = {
+            ccu: ccuLevels,
+            reqTput: ccuLevels.map(c => dataMap[String(c)].req_throughput),
+            totalTokTput: ccuLevels.map(c => dataMap[String(c)].total_tok_throughput),
+            e2eLat: ccuLevels.map(c => dataMap[String(c)].e2e_latency_s),
+            ttftMean: ccuLevels.map(c => dataMap[String(c)].ttft_mean_ms),
+            tpotMean: ccuLevels.map(c => dataMap[String(c)].tpot_mean_ms),
+            _color: mc.color,
+            _cssClass: mc.css_class,
+            _shortName: shortName,
+            _displayName: mc.display_name,
+            _hardware: mc.hardware,
+            _hardwareShort: mc.hardware_short,
+            _params: mc.params,
+            _fullName: mc.full_name,
+            _gpuCount: mc.gpu_count
+        };
+    }
+    modelNames = Object.keys(models);
+}
+
+function renderConfigTable() {
+    const tbody = document.getElementById('config-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    const cfg = modelConfig.benchmark_config;
+    const cfgModels = modelConfig.models;
+
+    const desc = document.getElementById('cfg-description');
+    if (desc) {
+        const inputTok = cfg.input_tokens.toLocaleString();
+        const outputTok = cfg.output_tokens.toLocaleString();
+        const totalInput = cfg.total_input_tokens_per_run.toLocaleString();
+        const totalOutput = cfg.total_output_tokens_per_run.toLocaleString();
+        const ccuMin = Math.min(...cfg.ccu_levels);
+        const ccuMax = Math.max(...cfg.ccu_levels);
+        desc.innerHTML = 'Mỗi lần benchmark gửi <strong>' + cfg.num_prompts_ccu_gt1 + ' request</strong> ở mức concurrency được chỉ định. Mỗi request sử dụng <strong>' + inputTok + ' input tokens</strong> và sinh ra <strong>' + outputTok + ' output tokens</strong> — cấu hình này phản ánh đúng mức sử dụng thực tế trung bình của các sản phẩm <strong>NetFlow, NetClaw và NetMind</strong>. Các mức concurrency được test dao động từ <strong>' + ccuMin + ' đến ' + ccuMax + ' CCU</strong> (đặc biệt bao gồm CCU=1 cho đo để latency cơ bản). Tổng tokens mỗi lần chạy = ' + ((cfg.total_input_tokens_per_run + cfg.total_output_tokens_per_run) / 1000000) + 'M (' + totalInput + ' input + ' + totalOutput + ' output).';
+    }
+
+    for (const mc of cfgModels) {
+        const md = benchData[mc.short_name];
+        if (!md) continue;
+        const ccuStr = md.ccu_levels.join(', ');
+        const highlight = mc.short_name === 'MiniMax-M2.7' ? ' class="highlight-row"' : '';
+        const hfUrl = md.huggingface_url || mc.huggingface_url || '';
+        const modelNameHtml = hfUrl
+            ? '<a href="' + hfUrl + '" target="_blank" rel="noopener" style="color:#1e40af;text-decoration:underline;">' + mc.full_name + '</a>'
+            : mc.full_name;
+        const row = '<tr' + highlight + '>' +
+            '<td>' + modelNameHtml + '<br><span style="font-size:0.8em;color:#64748b;">' + mc.params + ' · ' + mc.quantization + '</span></td>' +
+            '<td>' + mc.hardware + '</td>' +
+            '<td>500</td>' +
+            '<td>' + cfg.input_tokens.toLocaleString() + '</td>' +
+            '<td>' + cfg.output_tokens.toLocaleString() + '</td>' +
+            '<td>' + ccuStr + '</td>' +
+            '</tr>';
+        tbody.innerHTML += row;
+    }
+}
+
+function renderSummaryTable() {
+    const tbody = document.getElementById('summary-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    const sla = modelConfig.benchmark_config.sla_threshold_seconds;
+    for (const name of modelNames) {
+        const m = models[name];
+        const md = benchData[m._shortName];
+        const dataMap = md.data;
+        const ccus = md.ccu_levels;
+        let bestIdx = 0;
+        let bestTput = 0;
+        for (let i = 0; i < ccus.length; i++) {
+            if (m.totalTokTput[i] > bestTput) { bestTput = m.totalTokTput[i]; bestIdx = i; }
+        }
+        const bestData = dataMap[String(ccus[bestIdx])];
+        const e2e = m.e2eLat[bestIdx];
+        const row = '<tr' + (m._shortName === 'MiniMax-M2.7' ? ' class="highlight-row"' : '') + '>' +
+            '<td>' + m._displayName + '</td>' +
+            '<td>' + m._hardwareShort + '</td>' +
+            '<td>' + ccus[bestIdx] + '</td>' +
+            '<td>' + fmt(m.reqTput[bestIdx]) + '</td>' +
+            '<td' + peakClass(m.totalTokTput, bestIdx) + '>' + fmt(m.totalTokTput[bestIdx], 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '</td>' +
+            '<td>' + fmt(bestData.output_tok_throughput, 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '</td>' +
+            '<td' + slaClass(e2e, sla) + '>' + fmt(e2e) + '</td>' +
+            '<td>' + fmtInt(Math.round(m.ttftMean[bestIdx])) + '</td>' +
+            '<td>' + fmt(m.tpotMean[bestIdx]) + '</td>' +
+            '<td>' + (bestData.failed_requests === 0 ? '100%' : '~' + bestData.successful_requests + '/' + bestData.failed_requests) + '</td>' +
+            '</tr>';
+        tbody.innerHTML += row;
+    }
+}
+
+function renderDetailTables() {
+    const container = document.getElementById('detail-tables');
+    if (!container) return;
+    container.innerHTML = '';
+    const sla = modelConfig.benchmark_config.sla_threshold_seconds;
+    for (const name of modelNames) {
+        const m = models[name];
+        const md = benchData[m._shortName];
+        const dataMap = md.data;
+        const ccus = md.ccu_levels;
+        const ccuHeaders = ccus.map(c => '<th>CCU ' + c + '</th>').join('');
+        const metrics = [
+            { key: 'req_throughput', label: 'Req Throughput (req/s)' },
+            { key: 'total_tok_throughput', label: 'Total Token Tput (tok/s)', peak: true },
+            { key: 'output_tok_throughput', label: 'Output Token Tput (tok/s)', peak: true },
+            { key: 'e2e_latency_s', label: 'E2E Latency (s)', sla: true },
+            { key: 'ttft_mean_ms', label: 'TTFT Mean (ms)' },
+            { key: 'ttft_p99_ms', label: 'TTFT P99 (ms)' },
+            { key: 'tpot_mean_ms', label: 'TPOT Mean (ms)' },
+            { key: 'tpot_p99_ms', label: 'TPOT P99 (ms)' },
+            { key: 'itl_mean_ms', label: 'ITL Mean (ms)' },
+            { key: 'duration_s', label: 'Duration (s)' },
+            { key: 'success_failed', label: 'Success / Failed' }
+        ];
+        let rows = '';
+        for (const metric of metrics) {
+            let cells = '<td>' + metric.label + '</td>';
+            const values = ccus.map(c => dataMap[String(c)][metric.key]);
+            if (metric.key === 'success_failed') {
+                cells += ccus.map(c => { const d = dataMap[String(c)]; return '<td>' + d.successful_requests + ' / ' + d.failed_requests + '</td>'; }).join('');
+            } else if (metric.peak) {
+                const peak = Math.max(...values.filter(v => v != null));
+                cells += values.map(v => {
+                    if (v === null) return '<td>-</td>';
+                    const formatted = v >= 1000 ? fmt(v, 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',') : fmt(v);
+                    if (v === peak) return '<td class="peak-val">' + formatted + '</td>';
+                    return '<td>' + formatted + '</td>';
+                }).join('');
+            } else if (metric.sla) {
+                cells += values.map(v => {
+                    if (v === null) return '<td>-</td>';
+                    const formatted = fmt(v);
+                    if (v > sla) return '<td class="sla-warn">' + formatted + '</td>';
+                    return '<td>' + formatted + '</td>';
+                }).join('');
+            } else {
+                cells += values.map(v => {
+                    if (v === null) return '<td>-</td>';
+                    if (v >= 1000) return '<td>' + fmtInt(Math.round(v)) + '</td>';
+                    return '<td>' + fmt(v) + '</td>';
+                }).join('');
+            }
+            rows += '<tr>' + cells + '</tr>';
+        }
+        const section = '<div class="model-table-section">\n<h3>' + m._displayName + ' — ' + m._hardware + '</h3>\n<table class="model-detail-table">\n    <thead><tr><th>Metric</th>' + ccuHeaders + '</tr></thead>\n    <tbody>' + rows + '</tbody>\n</table>\n</div>';
+        container.innerHTML += section;
+    }
+}
+
+function renderSLASection() {
+    const tbody = document.getElementById('sla-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    const slaThresholds = modelConfig.sla_thresholds || {};
+    for (const name of modelNames) {
+        const m = models[name];
+        const threshold = slaThresholds[m._shortName];
+        if (!threshold) continue;
+        const row = '<tr' + (m._shortName === 'MiniMax-M2.7' ? ' class="highlight-row"' : '') + '>' +
+            '<td><strong>' + m._displayName + '</strong></td>' +
+            '<td><strong>~' + threshold.max_ccu_sla100s + '</strong></td>' +
+            '<td>' + threshold.note + '</td>' +
+            '</tr>';
+        tbody.innerHTML += row;
+    }
+}
+
+function renderAnalysis() {
+    const container = document.getElementById('analysis-cards');
+    if (!container) return;
+    container.innerHTML = '';
+    const sla = modelConfig.benchmark_config.sla_threshold_seconds;
+    for (const name of modelNames) {
+        const m = models[name];
+        const md = benchData[m._shortName];
+        const dataMap = md.data;
+        const ccus = md.ccu_levels;
+        let peakTotalTok = 0, peakTotalTokIdx = 0;
+        for (let i = 0; i < ccus.length; i++) {
+            if (m.totalTokTput[i] > peakTotalTok) { peakTotalTok = m.totalTokTput[i]; peakTotalTokIdx = i; }
+        }
+        const bestCcuUnderSla = (() => {
+            for (let i = ccus.length - 1; i >= 0; i--) {
+                if (m.e2eLat[i] <= sla) return ccus[i];
+            }
+            return 0;
+        })();
+        const html = '<div class="scenario-card other">' +
+            '<h3>' + m._displayName + ' (' + m._hardwareShort + ')</h3>' +
+            '<p style="color:#475569;margin-bottom:15px;">' +
+            'Peak throughput: <strong style="color:#059669">' + fmt(peakTotalTok, 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' tok/s</strong> at ' + ccus[peakTotalTokIdx] + ' CCU. ' +
+            'TPOT: ' + fmt(Math.min(...m.tpotMean)) + '–' + fmt(Math.max(...m.tpotMean)) + ' ms. ' +
+            'TTFT: ' + fmtInt(Math.round(Math.min(...m.ttftMean))) + '–' + fmtInt(Math.round(Math.max(...m.ttftMean))) + ' ms. ' +
+            (m.e2eLat[peakTotalTokIdx] > sla ? 'E2E exceeds SLA above ' + (bestCcuUnderSla || '1') + ' CCU.' : 'Meets SLA up to ~' + bestCcuUnderSla + ' CCU.') +
+            '</p>' +
+            '<ul style="color:#334155;list-style:disc;padding-left:20px;">' +
+            '<li>TTFT range: ' + fmtInt(Math.round(Math.min(...m.ttftMean))) + '–' + fmtInt(Math.round(Math.max(...m.ttftMean))) + ' ms</li>' +
+            '<li>TPOT range: ' + fmt(Math.min(...m.tpotMean)) + '–' + fmt(Math.max(...m.tpotMean)) + ' ms</li>' +
+            '<li>Peak total throughput: ' + fmt(peakTotalTok, 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' tok/s at ' + ccus[peakTotalTokIdx] + ' CCU</li>' +
+            '</ul></div>';
+        container.innerHTML += html;
+    }
+}
+
+const zoomSelectionPlugin = {
+    id: 'zoomSelection',
+    afterDraw(chart) {
+        if (!chart._zoomState || !chart._zoomState.dragging) return;
+        const { startX, currentX } = chart._zoomState;
+        const { top, bottom, left, right } = chart.chartArea;
+        const s = Math.max(left, Math.min(right, startX));
+        const e = Math.max(left, Math.min(right, currentX));
+        if (Math.abs(e - s) < 2) return;
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.fillStyle = 'rgba(37, 99, 235, 0.12)';
+        ctx.strokeStyle = 'rgba(37, 99, 235, 0.6)';
+        ctx.lineWidth = 1.5;
+        ctx.fillRect(s, top, e - s, bottom - top);
+        ctx.strokeRect(s, top, e - s, bottom - top);
+        ctx.restore();
+    }
+};
+Chart.register(zoomSelectionPlugin);
+
+const chartMap = {};
+const origScales = {};
+
+function setupZoom(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    const chart = chartMap[canvasId];
+    origScales[canvasId] = { min: chart.scales.x.min, max: chart.scales.x.max };
+    chart._zoomState = { dragging: false, startX: 0, currentX: 0 };
+
+    canvas.addEventListener('mousedown', function(e) {
+        if (e.button !== 0) return;
+        const area = chart.chartArea;
+        const x = e.offsetX;
+        const y = e.offsetY;
+        if (x < area.left || x > area.right || y < area.top || y > area.bottom) return;
+        e.preventDefault();
+        chart._zoomState = { dragging: true, startX: x, currentX: x };
+        canvas.style.cursor = 'ew-resize';
+
+        const onMove = function(ev) {
+            const rect = canvas.getBoundingClientRect();
+            const cx = Math.max(area.left, Math.min(area.right, ev.clientX - rect.left));
+            chart._zoomState = { dragging: true, startX: chart._zoomState.startX, currentX: cx };
+            chart.draw();
+        };
+
+        const onUp = function(ev) {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            canvas.style.cursor = 'crosshair';
+            const state = chart._zoomState;
+            chart._zoomState = { dragging: false };
+            const rect = canvas.getBoundingClientRect();
+            const s = Math.max(area.left, Math.min(area.right, state.startX));
+            const ex = Math.max(area.left, Math.min(area.right, ev.clientX - rect.left));
+            if (Math.abs(ex - s) < 5) { chart.update(); return; }
+            const scale = chart.scales.x;
+            const minVal = scale.getValueForPixel(Math.min(s, ex));
+            const maxVal = scale.getValueForPixel(Math.max(s, ex));
+            chart.options.scales.x.min = Math.round(minVal * 100) / 100;
+            chart.options.scales.x.max = Math.round(maxVal * 100) / 100;
+            chart.update();
+            var btn = document.getElementById('reset-' + canvasId);
+            if (btn) btn.style.display = 'inline-block';
+        };
+
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+}
+
+function resetZoom(canvasId) {
+    const chart = chartMap[canvasId];
+    const orig = origScales[canvasId];
+    chart.options.scales.x.min = orig.min;
+    chart.options.scales.x.max = orig.max;
+    chart.update();
+    var btn = document.getElementById('reset-' + canvasId);
+    if (btn) btn.style.display = 'none';
+}
+
+function makeDatasets(key) {
+    return modelNames.map((name, i) => ({
+        label: name,
+        data: models[name].ccu.map((ccu, j) => ({x: ccu, y: models[name][key][j]})),
+        borderColor: models[name]._color,
+        backgroundColor: models[name]._color + '22',
+        pointStyle: MARKERS[i % MARKERS.length],
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        borderWidth: 2.5,
+        tension: 0.15
+    }));
+}
+
+function makeScatterDatasets(xKey, yKey) {
+    return modelNames.map((name, i) => ({
+        label: name,
+        data: models[name].ccu.map((ccu, j) => ({x: models[name][xKey][j], y: models[name][yKey][j]})),
+        borderColor: models[name]._color,
+        backgroundColor: models[name]._color + '22',
+        pointStyle: MARKERS[i % MARKERS.length],
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        borderWidth: 2.5,
+        tension: 0.15,
+        showLine: true
+    }));
+}
+
+function renderCharts() {
+    const chartDefaults = {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: { labels: { color: '#334155', font: {size: 12}, usePointStyle: true } },
+        },
+        scales: {
+            x: { grid: { color: '#e2e8f0' }, ticks: { color: '#475569' } },
+            y: { grid: { color: '#e2e8f0' }, ticks: { color: '#475569' } }
+        }
+    };
+
+    var c1 = new Chart(document.getElementById('plot1'), {
+        type: 'line',
+        data: { datasets: makeDatasets('reqTput') },
+        options: {
+            ...chartDefaults,
+            scales: {
+                x: { ...chartDefaults.scales.x, type: 'linear', title: { display: true, text: 'Concurrency (requests/s)', color: '#334155', font: {weight: 'bold'} } },
+                y: { ...chartDefaults.scales.y, title: { display: true, text: 'Request Throughput (req/s)', color: '#334155', font: {weight: 'bold'} } }
+            },
+            plugins: { ...chartDefaults.plugins, title: { display: false } }
+        }
+    });
+    chartMap['plot1'] = c1;
+
+    var c2 = new Chart(document.getElementById('plot5'), {
+        type: 'line',
+        data: { datasets: makeDatasets('totalTokTput') },
+        options: {
+            ...chartDefaults,
+            scales: {
+                x: { ...chartDefaults.scales.x, type: 'linear', title: { display: true, text: 'Concurrency (requests/s)', color: '#334155', font: {weight: 'bold'} } },
+                y: { ...chartDefaults.scales.y, title: { display: true, text: 'Total Token Throughput (tok/s)', color: '#334155', font: {weight: 'bold'} } }
+            },
+            plugins: { ...chartDefaults.plugins, title: { display: false } }
+        }
+    });
+    chartMap['plot5'] = c2;
+
+    var c3 = new Chart(document.getElementById('plot2'), {
+        type: 'line',
+        data: {
+            datasets: makeDatasets('e2eLat').concat([{
+                label: 'SLA (100s)',
+                data: [{x:0,y:100},{x:200,y:100}],
+                borderColor: '#dc2626',
+                borderDash: [8,4],
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: false
+            }])
+        },
+        options: {
+            ...chartDefaults,
+            scales: {
+                x: { ...chartDefaults.scales.x, type: 'linear', title: { display: true, text: 'Concurrency (requests/s)', color: '#334155', font: {weight: 'bold'} } },
+                y: { ...chartDefaults.scales.y, title: { display: true, text: 'Avg E2E Latency (s)', color: '#334155', font: {weight: 'bold'} } }
+            },
+            plugins: { ...chartDefaults.plugins, title: { display: false } }
+        }
+    });
+    chartMap['plot2'] = c3;
+
+    var c4 = new Chart(document.getElementById('plot3'), {
+        type: 'line',
+        data: {
+            datasets: makeScatterDatasets('reqTput','e2eLat').concat([{
+                label: 'SLA (100s)',
+                data: [{x:-0.1,y:100},{x:1,y:100}],
+                borderColor: '#dc2626',
+                borderDash: [8,4],
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: false
+            }])
+        },
+        options: {
+            ...chartDefaults,
+            scales: {
+                x: { ...chartDefaults.scales.x, type: 'linear', min: 0, max: 0.85, title: { display: true, text: 'Request Throughput (req/s)', color: '#334155', font: {weight: 'bold'} } },
+                y: { ...chartDefaults.scales.y, title: { display: true, text: 'Avg E2E Latency (s)', color: '#334155', font: {weight: 'bold'} } }
+            },
+            plugins: { ...chartDefaults.plugins, title: { display: false } }
+        }
+    });
+    chartMap['plot3'] = c4;
+
+    setupZoom('plot1');
+    setupZoom('plot5');
+    setupZoom('plot2');
+    setupZoom('plot3');
+}
+
+loadDataAndRender();
+</script>
+
+<script>
+const outlineLinks = document.querySelectorAll('.outline-nav a');
+const sections = [];
+outlineLinks.forEach(link => {
+    const id = link.getAttribute('href').slice(1);
+    const el = document.getElementById(id);
+    if (el) sections.push({ el, link });
+});
+function updateActiveLink() {
+    let current = sections[0];
+    for (const s of sections) {
+        if (s.el.getBoundingClientRect().top <= 100) current = s;
+    }
+    outlineLinks.forEach(l => l.classList.remove('active'));
+    if (current) current.link.classList.add('active');
+}
+window.addEventListener('scroll', updateActiveLink, { passive: true });
+updateActiveLink();
+</script>
+<script>
+document.querySelectorAll('#aaTabs .aa-tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+        document.querySelectorAll('#aaTabs .aa-tab').forEach(function(t) { t.classList.remove('active'); });
+        document.querySelectorAll('.aa-tab-content').forEach(function(c) { c.classList.remove('active'); });
+        tab.classList.add('active');
+        document.getElementById(tab.getAttribute('data-tab')).classList.add('active');
+    });
+});
+</script>
+<div id="gpu-tooltip"></div>
+<script>
+(function(){
+    var tip = document.getElementById('gpu-tooltip');
+    document.querySelectorAll('.has-tooltip').forEach(function(el){
+        el.addEventListener('mouseenter', function(e){
+            tip.textContent = el.getAttribute('data-tooltip');
+            tip.style.display = 'block';
+            var r = el.getBoundingClientRect();
+            tip.style.left = (r.left + r.width/2 - tip.offsetWidth/2) + 'px';
+            tip.style.top = (r.bottom + 6) + 'px';
+        });
+        el.addEventListener('mouseleave', function(){
+            tip.style.display = 'none';
+        });
+    });
+})();
+</script>
+</body>
+</html>
